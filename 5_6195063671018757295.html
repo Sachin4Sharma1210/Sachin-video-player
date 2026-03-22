@@ -1,0 +1,1043 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>➤ 𝕊𝔸ℂℍ𝕀ℕ 𝕊ℍ𝔸ℝ𝕄𝔸</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
+    <script src="https://cdn.jsdelivr.net/npm/shaka-player@4.7.0/dist/shaka-player.compiled.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #000;
+            color: #fff;
+            overflow: hidden;
+            height: 100vh;
+            height: 100dvh;
+        }
+        .player {
+            position: relative;
+            width: 100vw;
+            height: 100vh;
+            height: 100dvh;
+            background: #000;
+        }
+        #video {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+        }
+        .overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: linear-gradient(0deg, rgba(0, 0, 0, 0.7) 0%, transparent 30%, transparent 70%, rgba(0, 0, 0, 0.5) 100%);
+            opacity: 0;
+            transition: opacity 0.3s ease;
+            pointer-events: none;
+        }
+        .player:hover .overlay,
+        .player.show-controls .overlay {
+            opacity: 1;
+        }
+        .header {
+            position: absolute;
+            top: max(18px, env(safe-area-inset-top));
+            left: max(18px, env(safe-area-inset-left));
+            right: max(18px, env(safe-area-inset-right));
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+            pointer-events: none;
+        }
+        .player:hover .header,
+        .player.show-controls .header {
+            opacity: 1;
+            pointer-events: all;
+        }
+        .header-left {
+            flex: 1;
+        }
+        .title-container {
+            display: flex;
+            flex-direction: column;
+            align-items: flex-end;
+            gap: 4px;
+        }
+        .title-text {
+            font-size: 20px;
+            font-weight: 700;
+            color: #ffffff;
+            -webkit-text-fill-color: #ffffff;
+            text-decoration: none;
+            cursor: default;
+            padding: 4px 8px;
+            border-radius: 6px;
+        }
+        .tg-header-btn {
+            background: linear-gradient(135deg, #ffffff, #cccccc);
+            border: none;
+            color: #000;
+            width: 35px;
+            height: 35px;
+            border-radius: 50%;
+            cursor: pointer;
+            font-size: 14px;
+            transition: transform 0.2s ease, background 0.2s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            pointer-events: auto;
+        }
+        .tg-header-btn:hover {
+            transform: scale(1.1);
+            background: linear-gradient(135deg, #e0e0e0, #b0b0b0);
+        }
+        .content-type {
+            background: linear-gradient(135deg, #ffffff, #cccccc);
+            padding: 2px 8px;
+            border-radius: 16px;
+            font-size: 10px;
+            font-weight: bold;
+            margin-left: 8px;
+            color: #000;
+        }
+        .controls {
+            position: fixed;
+            bottom: env(safe-area-inset-bottom, 0px);
+            left: 0;
+            right: 0;
+            padding: 22px max(18px, env(safe-area-inset-left)) max(16px, env(safe-area-inset-bottom)) max(18px, env(safe-area-inset-right));
+            opacity: 0;
+            transition: opacity 0.3s ease;
+            pointer-events: none;
+            background: linear-gradient(0deg, rgba(0, 0, 0, 0.85) 0%, transparent 100%);
+        }
+        .player:hover .controls,
+        .player.show-controls .controls {
+            opacity: 1;
+            pointer-events: all;
+        }
+        .progress {
+            width: 100%;
+            height: 4px;
+            background: rgba(255, 255, 255, 0.25);
+            border-radius: 2px;
+            margin-bottom: 10px;
+            cursor: pointer;
+            position: relative;
+        }
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #ffffff, #cccccc);
+            border-radius: 2px;
+            width: 0%;
+            transition: width 0.1s linear;
+        }
+        .main-controls {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .btn {
+            background: rgba(255, 255, 255, 0.12);
+            border: none;
+            color: white;
+            border-radius: 7px;
+            cursor: pointer;
+            transition: background 0.2s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .btn:hover {
+            background: rgba(255, 255, 255, 0.25);
+        }
+        .play-btn {
+            width: 45px;
+            height: 45px;
+            font-size: 16px;
+            background: linear-gradient(135deg, #444444, #222222);
+            border-radius: 50%;
+        }
+        .ctrl-btn {
+            width: 35px;
+            height: 35px;
+            font-size: 12px;
+        }
+        .time {
+            font-size: 12px;
+            color: rgba(255, 255, 255, 0.75);
+            min-width: 70px;
+            text-align: center;
+        }
+        .spacer {
+            flex: 1;
+        }
+        .loading {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            text-align: center;
+        }
+        .dot-loader {
+            display: flex;
+            gap: 7px;
+            justify-content: center;
+            align-items: center;
+            margin-bottom: 13px;
+        }
+        .dot-loader span {
+            width: 10px;
+            height: 10px;
+            background: #ffffff;
+            border-radius: 50%;
+            display: inline-block;
+            animation: bounce 0.6s infinite alternate;
+        }
+        .dot-loader span:nth-child(2) {
+            animation-delay: 0.2s;
+        }
+        .dot-loader span:nth-child(3) {
+            animation-delay: 0.4s;
+        }
+        @keyframes bounce {
+            0% {
+                transform: translateY(0);
+            }
+            100% {
+                transform: translateY(-13px);
+            }
+        }
+        .error {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            text-align: center;
+            display: none;
+        }
+        .error i {
+            font-size: 45px;
+            color: #ffffff;
+            margin-bottom: 13px;
+        }
+        .menu {
+            position: absolute;
+            bottom: 60px;
+            background: rgba(0, 0, 0, 0.95);
+            border-radius: 7px;
+            padding: 7px 0;
+            min-width: 110px;
+            backdrop-filter: blur(10px);
+            display: none;
+        }
+        .menu-item {
+            padding: 9px 13px;
+            cursor: pointer;
+            transition: background 0.2s ease;
+        }
+        .menu-item:hover {
+            background: rgba(255, 255, 255, 0.12);
+        }
+        .menu-item.active {
+            color: #ffffff;
+        }
+        .tg-overlay {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: linear-gradient(135deg, #ffffff, #cccccc);
+            width: 70px;
+            height: 70px;
+            border-radius: 50%;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+            color: #000;
+            cursor: pointer;
+            transition: transform 0.2s ease;
+        }
+        .player.paused .tg-overlay {
+            display: flex;
+        }
+        .tg-overlay:hover {
+            transform: translate(-50%, -50%) scale(1.1);
+        }
+        .toast {
+            position: fixed;
+            top: max(18px, env(safe-area-inset-top));
+            right: max(18px, env(safe-area-inset-right));
+            background: linear-gradient(135deg, #ffffff, #cccccc);
+            color: #000;
+            padding: 10px 16px;
+            border-radius: 10px;
+            box-shadow: 0 8px 32px rgba(255, 255, 255, 0.3);
+            font-size: 12px;
+            font-weight: 500;
+            transform: translateX(100%);
+            transition: transform 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+            z-index: 9999;
+            max-width: 270px;
+            backdrop-filter: blur(10px);
+            display: flex;
+            align-items: center;
+            gap: 9px;
+        }
+        .toast.show {
+            transform: translateX(0);
+        }
+        .toast .icon {
+            font-size: 14px;
+            color: #000;
+        }
+        .toast .close-btn {
+            background: none;
+            border: none;
+            color: rgba(0, 0, 0, 0.8);
+            cursor: pointer;
+            font-size: 14px;
+            margin-left: auto;
+            padding: 0;
+            transition: color 0.2s ease;
+        }
+        .toast .close-btn:hover {
+            color: #000;
+        }
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 10000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.85);
+        }
+        .modal-content {
+            background-color: #1c1c1c;
+            margin: 15% auto;
+            padding: 16px;
+            border: 1px solid #444;
+            border-radius: 9px;
+            width: 80%;
+            max-width: 380px;
+            color: white;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.6);
+        }
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 11px;
+        }
+        .modal-header h2 {
+            margin: 0;
+            font-size: 1.3em;
+        }
+        .close {
+            color: #bbb;
+            font-size: 24px;
+            font-weight: bold;
+            cursor: pointer;
+            line-height: 1;
+        }
+        .close:hover,
+        .close:focus {
+            color: #fff;
+        }
+        .modal-body {
+            margin-bottom: 16px;
+        }
+        .modal-body label {
+            display: block;
+            margin-bottom: 6px;
+            font-weight: bold;
+        }
+        .modal-body input[type="text"] {
+            width: 100%;
+            padding: 8px;
+            border-radius: 5px;
+            border: 1px solid #444;
+            background-color: #333;
+            color: white;
+            box-sizing: border-box;
+        }
+        .modal-footer {
+            display: flex;
+            justify-content: flex-end;
+            gap: 8px;
+        }
+        .btn-modal {
+            padding: 6px 12px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-weight: bold;
+        }
+        .btn-save {
+            background-color: #ffffff;
+            color: #000;
+        }
+        .btn-save:hover {
+            background-color: #e0e0e0;
+        }
+        .btn-cancel {
+            background-color: #5a5a5a;
+            color: white;
+        }
+        .btn-cancel:hover {
+            background-color: #7a7a7a;
+        }
+        @media (max-width: 768px) {
+            .controls {
+                padding: 16px max(15px, env(safe-area-inset-left)) max(14px, env(safe-area-inset-bottom)) max(15px, env(safe-area-inset-right));
+            }
+            .main-controls {
+                gap: 8px;
+            }
+            .play-btn {
+                width: 42px;
+                height: 42px;
+                font-size: 15px;
+            }
+            .ctrl-btn {
+                width: 33px;
+                height: 33px;
+                font-size: 11px;
+            }
+            .time {
+                font-size: 11px;
+                min-width: 68px;
+            }
+            .header {
+                top: max(15px, env(safe-area-inset-top));
+                left: max(15px, env(safe-area-inset-left));
+                right: max(15px, env(safe-area-inset-right));
+            }
+            .title-text {
+                font-size: 15px;
+            }
+            .tg-header-btn {
+                width: 32px;
+                height: 32px;
+                font-size: 13px;
+            }
+            .content-type {
+                font-size: 9px;
+                padding: 1px 7px;
+            }
+            .toast {
+                top: max(15px, env(safe-area-inset-top));
+                right: max(15px, env(safe-area-inset-right));
+                max-width: 250px;
+                font-size: 11px;
+            }
+            .modal-content {
+                width: 90%;
+                margin: 20% auto;
+            }
+        }
+        @media (max-width: 480px) {
+            .controls {
+                padding: 11px max(10px, env(safe-area-inset-left)) max(9px, env(safe-area-inset-bottom)) max(10px, env(safe-area-inset-right));
+            }
+            .main-controls {
+                gap: 6px;
+            }
+            .play-btn {
+                width: 38px;
+                height: 38px;
+                font-size: 14px;
+            }
+            .ctrl-btn {
+                width: 30px;
+                height: 30px;
+                font-size: 10px;
+            }
+            .time {
+                font-size: 10px;
+                min-width: 62px;
+            }
+        }
+        /* NEW: Lock Screen Styles */
+        .player.locked .controls {
+            opacity: 0 !important;
+            pointer-events: none !important;
+        }
+        .player.locked .header {
+            opacity: 0 !important;
+            pointer-events: none !important;
+        }
+        .player.locked #lockBtn {
+            position: absolute;
+            top: max(15px, env(safe-area-inset-top));
+            right: max(15px, env(safe-area-inset-right));
+            opacity: 1 !important;
+            pointer-events: auto !important;
+            z-index: 100;
+            background: rgba(0,0,0,0.6);
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            font-size: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        /* NEW: Left Unlock Button Styles */
+        .unlock-btn-left {
+            position: absolute;
+            top: max(15px, env(safe-area-inset-top));
+            left: max(15px, env(safe-area-inset-left));
+            background: rgba(0,0,0,0.6);
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            font-size: 16px;
+            display: none; /* Initially hidden */
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            z-index: 100;
+            opacity: 1 !important;
+            pointer-events: auto !important;
+        }
+        .player.locked .unlock-btn-left {
+            display: flex; /* Show when player is locked */
+        }
+        .unlock-btn-left:hover {
+            background: rgba(0,0,0,0.8);
+        }
+        /* NEW: Hide token-related elements */
+        #tokenBtn, #tokenModal, #tokenToast {
+            display: none !important;
+        }
+    </style>
+</head>
+<body>
+    <!-- NEW: Copyright Toast -->
+    <div class="toast" id="copyrightToast" style="display: block; top: 50%; left: 50%; transform: translate(-50%, -50%); z-index: 10001; max-width: 90vw; text-align: center; background: rgba(0, 0, 0, 0.95); color: white; padding: 15px; border-radius: 10px; box-shadow: 0 4px 16px rgba(0,0,0,0.6); backdrop-filter: blur(8px);">
+        <div style="text-align: center; margin-bottom: 8px;">
+            <a href="https://t.me/Sachin4Sharma1210" target="_blank" rel="noopener noreferrer" style="font-size: 13px; line-height: 1.4; color: #00aaff; text-decoration: none; font-weight: bold;">
+                This Is Only For Education Purpose And No Copyright Infringement Intended, All The Credits & Rights Reserved to the Actual Owner ➤ 𝕊𝔸ℂℍ𝕀ℕ 𝕊ℍ𝔸ℝ𝕄𝔸 ✈️
+            </a>
+        </div>
+        <button onclick="hideCopyrightToast()" style="margin-top: 10px; background-color: #ffffff; color: #000; padding: 6px 12px; border-radius: 6px; cursor: pointer; font-size: 12px; width: 100%; border: none;">Okay</button>
+    </div>
+    <div class="player" id="player">
+        <video id="video" playsinline webkit-playsinline preload="metadata"></video>
+        <div class="overlay"></div>
+        <div class="header">
+            <div class="header-left"></div>
+            <div class="title-container">
+                <div class="title-text">➤ 𝕊𝔸ℂℍ𝕀ℕ 𝕊ℍ𝔸ℝ𝕄𝔸</div>
+                <button class="tg-header-btn" onclick="openTelegram()">
+                    <i class="fab fa-telegram"></i>
+                </button>
+                <div class="content-type" id="contentType" style="display: none;"></div>
+            </div>
+        </div>
+        <div class="tg-overlay" onclick="openTelegram()">
+            <i class="fab fa-telegram"></i>
+        </div>
+        <!-- NEW: Left-side Unlock Button (only visible when locked) -->
+        <div class="unlock-btn-left" onclick="toggleLock()">
+            <i class="fas fa-lock-open"></i>
+        </div>
+        <div class="controls">
+            <div class="progress" id="progress">
+                <div class="progress-fill" id="progressFill"></div>
+            </div>
+            <div class="main-controls">
+                <button class="btn ctrl-btn" onclick="seek(-10)">
+                    <i class="fas fa-step-backward"></i>
+                </button>
+                <button class="btn play-btn" id="playBtn">
+                    <i class="fas fa-play"></i>
+                </button>
+                <button class="btn ctrl-btn" onclick="seek(10)">
+                    <i class="fas fa-step-forward"></i>
+                </button>
+                <div class="time" id="time">00:00 / 00:00</div>
+                <div class="spacer"></div>
+                <!-- REMOVED: Download button -->
+                <!-- <button class="btn ctrl-btn" id="downloadBtn" onclick="downloadVideo()"> -->
+                <!--     <i class="fas fa-download"></i> -->
+                <!-- </button> -->
+                <!-- NEW: Lock Button -->
+                <button class="btn ctrl-btn" id="lockBtn" onclick="toggleLock()">
+                    <i class="fas fa-lock"></i>
+                </button>
+                <div style="position: relative;">
+                    <button class="btn ctrl-btn" id="qualityBtn" onclick="toggleMenu('quality')">
+                        <i class="fas fa-cog"></i>
+                    </button>
+                    <div class="menu" id="qualityMenu">
+                        <div class="menu-item active" data-quality="auto">Auto</div>
+                    </div>
+                </div>
+                <div style="position: relative;">
+                    <button class="btn ctrl-btn" id="speedBtn" onclick="toggleMenu('speed')">
+                        <i class="fas fa-tachometer-alt"></i>
+                    </button>
+                    <div class="menu" id="speedMenu">
+                        <div class="menu-item" onclick="setSpeed(0.5)">0.5x</div>
+                        <div class="menu-item" onclick="setSpeed(0.75)">0.75x</div>
+                        <div class="menu-item active" onclick="setSpeed(1)">1x</div>
+                        <div class="menu-item" onclick="setSpeed(1.25)">1.25x</div>
+                        <div class="menu-item" onclick="setSpeed(1.5)">1.5x</div>
+                        <div class="menu-item" onclick="setSpeed(2)">2x</div>
+                    </div>
+                </div>
+                <button class="btn ctrl-btn" onclick="toggleFullscreen()">
+                    <i class="fas fa-expand"></i>
+                </button>
+            </div>
+        </div>
+        <div class="loading" id="loading">
+            <div class="dot-loader">
+                <span></span>
+                <span></span>
+                <span></span>
+            </div>
+            <div>Loading...</div>
+        </div>
+        <div class="error" id="error">
+            <i class="fas fa-exclamation-triangle"></i>
+            <h3>Playback Error</h3>
+            <p id="errorMsg">Unable to load video</p>
+            <br>
+            <button class="btn" onclick="retry()" style="padding: 10px 20px;">Retry</button>
+        </div>
+    </div>
+    <!-- REMOVED: Token toast and modal -->
+    <script>
+        // REMOVED: Token-related variables and functions
+        // const API_BASE_URL = 'https://itsgolu-only-cp-mpd-parse.vercel.app/itsgolu';
+        // OLD:
+        // const API_BASE_URL = 'https://itsgolu-private-2026.vercel.app/itsgolu'; // Updated API URL
+
+        // NEW: Updated API URL (private proxy server)
+        const API_BASE_URL = 'https://itsgolu-v1player-api.vercel.app/api/proxy';
+
+        async function fetchVideoDataFromAPI(classPlusUrl) {
+            // No token required anymore
+            const encodedUrl = encodeURIComponent(classPlusUrl);
+            // Ab sirf URL bhejenge, baaki kaam server karega
+            // Construct the new API URL with the required format
+            const apiUrl = `${API_BASE_URL}?url=${encodedUrl}`;
+            console.log("Fetching from proxy API:", apiUrl);
+            try {
+                const response = await fetch(apiUrl);
+                if (!response.ok) {
+                    throw new Error(`API request failed with status ${response.status}`);
+                }
+                const data = await response.json();
+                console.log("Proxy API Response:", data);
+                return data;
+            } catch (error) {
+                console.error("Error fetching video data from proxy API:", error);
+                throw error;
+            }
+        }
+        let video = document.getElementById('video');
+        let player = document.getElementById('player');
+        let controlsTimeout;
+        let hls = null;
+        let shakaPlayer = null;
+        let qualityLevels = [];
+        let downloadUrls = {}; // Variable kept for potential future use
+        let contentType = 'unknown';
+        let currentDrmKeys = [];
+        let toastShown = false;
+        // --- NEW: Lock Screen Variables ---
+        let isLocked = false;
+        let hideControlsTimer = null;
+        document.addEventListener('DOMContentLoaded', async function () {
+            setupEvents();
+            const urlParams = new URLSearchParams(window.location.search);
+            let classPlusUrl = urlParams.get('url');
+            if (!classPlusUrl) {
+                showError('No video URL provided in query string.');
+                hideLoading();
+                return;
+            }
+            // REMOVED: Token check and modal opening logic
+            await loadVideoWithToken(classPlusUrl); // Directly load the video
+        });
+        async function loadVideoWithToken(classPlusUrl) {
+            try {
+                showLoading();
+                const videoData = await fetchVideoDataFromAPI(classPlusUrl);
+                if (videoData.KEYS && videoData.MPD) {
+                    console.log("Detected DRM content via API");
+                    contentType = 'drm';
+                    updateContentTypeDisplay('drm');
+                    await loadDRMVideo(videoData.MPD, videoData.KEYS);
+                } else if (videoData.url) {
+                     console.log("Detected Non-DRM content via API");
+                     contentType = 'hls';
+                     updateContentTypeDisplay('hls');
+                     await loadVideoDirect(videoData.url);
+                } else {
+                    showError('API response format is unexpected. Missing "url", or "KEYS"/"MPD".');
+                    hideLoading();
+                }
+                try { await video.play(); } catch (e) { console.log('Auto-play prevented by browser policy'); }
+                hideLoading();
+            } catch (error) {
+                 showError('Failed to load video: ' + error.message);
+                 hideLoading();
+            }
+        }
+        function setupEvents() {
+            video.addEventListener('loadstart', () => showLoading());
+            video.addEventListener('canplay', hideLoading);
+            video.addEventListener('play', onPlay);
+            video.addEventListener('pause', onPause);
+            video.addEventListener('timeupdate', updateProgress);
+            video.addEventListener('loadedmetadata', updateTime);
+            video.addEventListener('error', () => showError('Video loading failed'));
+            document.getElementById('playBtn').addEventListener('click', togglePlay);
+            video.addEventListener('click', togglePlay);
+            video.addEventListener('dblclick', toggleFullscreen);
+            document.getElementById('progress').addEventListener('click', onProgressClick);
+            player.addEventListener('mousemove', showControls);
+            player.addEventListener('touchstart', showControls);
+            player.addEventListener('touchmove', showControls); // for mobile safety
+            document.addEventListener('keydown', handleKeyboard);
+            document.addEventListener('click', function (e) {
+                if (!e.target.closest('#speedBtn')) { document.getElementById('speedMenu').style.display = 'none'; }
+                if (!e.target.closest('#qualityBtn')) { document.getElementById('qualityMenu').style.display = 'none'; }
+            });
+        }
+        async function loadVideoDirect(url) {
+            try {
+                const isM3U8 = url.includes('.m3u8');
+                if (isM3U8) { await loadHLSVideo(url); } else { video.src = url; }
+            } catch (error) {
+                console.error("Error loading direct video:", error);
+                throw error;
+            }
+        }
+        async function loadDRMVideo(mpdUrl, keys) {
+            try {
+                console.log('Loading DRM content:', mpdUrl);
+                console.log('DRM Keys:', keys);
+                shaka.polyfill.installAll();
+                if (!shaka.Player.isBrowserSupported()) {
+                    showError('DRM content not supported in this browser');
+                    return;
+                }
+                shakaPlayer = new shaka.Player(video);
+                shakaPlayer.configure({ drm: { clearKeys: {} } });
+                if (keys && keys.length > 0) {
+                    keys.forEach(key => {
+                        const [keyId, keyValue] = key.split(':');
+                        shakaPlayer.configure({ drm: { clearKeys: { [keyId]: keyValue } } });
+                    });
+                    currentDrmKeys = keys;
+                }
+                shakaPlayer.addEventListener('variantchanged', () => { setupDRMQualityMenu(); });
+                await shakaPlayer.load(mpdUrl);
+                console.log('DRM video loaded successfully');
+                setupDRMQualityMenu();
+            } catch (error) {
+                console.error('DRM loading error:', error);
+                showError('Failed to load DRM content: ' + error.message);
+            }
+        }
+        function setupDRMQualityMenu() {
+            if (!shakaPlayer) return;
+            const tracks = shakaPlayer.getVariantTracks();
+            const qualityMenu = document.getElementById('qualityMenu');
+            qualityMenu.innerHTML = '<div class="menu-item active" onclick="setDRMQuality(-1)">Auto</div>';
+            const uniqueHeights = [...new Set(tracks.map(track => track.height))].sort((a, b) => b - a);
+            uniqueHeights.forEach(height => {
+                const menuItem = document.createElement('div');
+                menuItem.className = 'menu-item';
+                menuItem.onclick = () => setDRMQuality(height);
+                menuItem.textContent = `${height}p`;
+                qualityMenu.appendChild(menuItem);
+            });
+        }
+        function setDRMQuality(height) {
+            if (!shakaPlayer) return;
+            if (height === -1) { shakaPlayer.configure({ abr: { enabled: true } }); } else {
+                shakaPlayer.configure({ abr: { enabled: false } });
+                const tracks = shakaPlayer.getVariantTracks().filter(track => track.height === height);
+                if (tracks.length > 0) { shakaPlayer.selectVariantTrack(tracks[0], true); }
+            }
+            document.querySelectorAll('#qualityMenu .menu-item').forEach(item => { item.classList.remove('active'); });
+            event.target.classList.add('active');
+            document.getElementById('qualityMenu').style.display = 'none';
+        }
+        async function loadHLSVideo(url) {
+            if (Hls.isSupported()) {
+                if (hls) { hls.destroy(); }
+                hls = new Hls({
+                    enableWorker: true,
+                    lowLatencyMode: false,
+                    xhrSetup: function(xhr, url) { xhr.withCredentials = false; },
+                    fetchSetup: function(context, initParams) { return new Request(context.url, { ...initParams, mode: 'cors', credentials: 'omit' }); }
+                });
+                hls.loadSource(url);
+                hls.attachMedia(video);
+                hls.on(Hls.Events.MANIFEST_PARSED, function (event, data) {
+                    console.log('HLS Manifest loaded, found ' + data.levels.length + ' quality level(s)');
+                    setupHLSQualityMenu(data.levels);
+                    // Removed setupDownloadOptions call
+                });
+                hls.on(Hls.Events.LEVEL_SWITCHED, function (event, data) {
+                    console.log('HLS Level switched to: ' + data.level);
+                    updateActiveQuality(data.level);
+                });
+                hls.on(Hls.Events.ERROR, function (event, data) {
+                    console.error('HLS Error:', data);
+                    if (data.fatal) {
+                        switch (data.type) {
+                            case Hls.ErrorTypes.NETWORK_ERROR: hls.startLoad(); break;
+                            case Hls.ErrorTypes.MEDIA_ERROR: hls.recoverMediaError(); break;
+                            default: showError('Fatal error occurred'); break;
+                        }
+                    }
+                });
+            } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
+                video.src = url;
+                // Removed setupDownloadOptions call
+            } else {
+                showError('HLS not supported in this browser');
+            }
+        }
+        function setupHLSQualityMenu(levels) {
+            const qualityMenu = document.getElementById('qualityMenu');
+            qualityMenu.innerHTML = '<div class="menu-item active" onclick="setHLSQuality(-1)">Auto</div>';
+            levels.forEach((level, index) => {
+                const height = level.height || 'Unknown';
+                const menuItem = document.createElement('div');
+                menuItem.className = 'menu-item';
+                menuItem.onclick = () => setHLSQuality(index);
+                menuItem.textContent = `${height}p`;
+                qualityMenu.appendChild(menuItem);
+            });
+            qualityLevels = levels;
+        }
+        function setHLSQuality(levelIndex) {
+            if (hls) { hls.nextLevel = levelIndex; hls.currentLevel = levelIndex; }
+            document.querySelectorAll('#qualityMenu .menu-item').forEach((item, index) => {
+                item.classList.remove('active');
+                if ((levelIndex === -1 && index === 0) || (levelIndex === index - 1)) { item.classList.add('active'); }
+            });
+            document.getElementById('qualityMenu').style.display = 'none';
+        }
+        function updateActiveQuality(level) {
+            document.querySelectorAll('#qualityMenu .menu-item').forEach((item, index) => {
+                item.classList.remove('active');
+                if (level === -1 && index === 0) { item.classList.add('active'); } else if (level === index - 1) { item.classList.add('active'); }
+            });
+        }
+        // Removed setupDownloadOptions function as it's no longer needed
+        function updateContentTypeDisplay(type) {
+            const contentTypeEl = document.getElementById('contentType');
+            if (type === 'drm') {
+                contentTypeEl.textContent = 'DRM';
+                contentTypeEl.style.display = 'block';
+            } else if (type === 'hls') {
+                contentTypeEl.textContent = 'HLS';
+                contentTypeEl.style.display = 'block';
+            } else {
+                contentTypeEl.style.display = 'none';
+            }
+        }
+        function togglePlay() {
+            if (video.paused) { video.play(); } else { video.pause(); }
+        }
+        function onPlay() {
+            document.getElementById('playBtn').innerHTML = '<i class="fas fa-pause"></i>';
+            player.classList.remove('paused');
+            document.querySelector('.tg-overlay').style.display = 'none';
+            if (!toastShown) { setTimeout(showChannelToast, 3000); toastShown = true; }
+        }
+        function onPause() {
+            document.getElementById('playBtn').innerHTML = '<i class="fas fa-play"></i>';
+            player.classList.add('paused');
+        }
+        function updateProgress() {
+            const progress = (video.currentTime / video.duration) * 100;
+            document.getElementById('progressFill').style.width = progress + '%';
+            updateTime();
+        }
+        function updateTime() {
+            const current = formatTime(video.currentTime);
+            const total = formatTime(video.duration);
+            document.getElementById('time').textContent = `${current} / ${total}`;
+        }
+        function formatTime(seconds) {
+            const mins = Math.floor(seconds / 60);
+            const secs = Math.floor(seconds % 60);
+            return `${mins}:${secs.toString().padStart(2, '0')}`;
+        }
+        function onProgressClick(e) {
+            const rect = e.target.getBoundingClientRect();
+            const percent = (e.clientX - rect.left) / rect.width;
+            video.currentTime = percent * video.duration;
+        }
+        function seek(seconds) {
+            video.currentTime = Math.max(0, Math.min(video.duration, video.currentTime + seconds));
+        }
+        function setSpeed(speed) {
+            video.playbackRate = speed;
+            document.querySelectorAll('#speedMenu .menu-item').forEach(item => { item.classList.remove('active'); });
+            event.target.classList.add('active');
+            document.getElementById('speedMenu').style.display = 'none';
+        }
+        function toggleMenu(type) {
+            const menu = document.getElementById(type + 'Menu');
+            menu.style.display = menu.style.display === 'block' ? 'none' : 'block';
+        }
+        function toggleFullscreen() {
+            if (!document.fullscreenElement) { player.requestFullscreen(); } else { document.exitFullscreen(); }
+        }
+        // Removed downloadVideo function as it's no longer needed
+        function openTelegram() {
+            window.open('https://t.me/Sachin4Sharma1210', '_blank', 'noopener noreferrer');
+        }
+        // --- NEW: Updated showControls() to respect lock state ---
+        function showControls() {
+            if (isLocked) return; // Do nothing if locked
+            player.classList.add('show-controls');
+            clearTimeout(hideControlsTimer);
+            hideControlsTimer = setTimeout(() => {
+                if (!video.paused && !isLocked) {
+                    player.classList.remove('show-controls');
+                }
+            }, 3000);
+        }
+        // --- NEW: Lock/Unlock Function ---
+        function toggleLock() {
+            isLocked = !isLocked;
+            player.classList.toggle('locked', isLocked);
+            const lockIcon = document.querySelector('#lockBtn i');
+            lockIcon.className = isLocked ? 'fas fa-lock-open' : 'fas fa-lock';
+            if (isLocked) {
+                // Hide all controls immediately
+                clearTimeout(hideControlsTimer);
+                player.classList.remove('show-controls');
+            } else {
+                // Show controls and restart auto-hide
+                showControls();
+            }
+        }
+        function showLoading() {
+            document.getElementById('loading').style.display = 'block';
+            document.getElementById('error').style.display = 'none';
+        }
+        function hideLoading() {
+            document.getElementById('loading').style.display = 'none';
+        }
+        function showError(message) {
+            hideLoading();
+            document.getElementById('errorMsg').textContent = message;
+            document.getElementById('error').style.display = 'block';
+        }
+        function retry() {
+            document.getElementById('error').style.display = 'none';
+            const urlParams = new URLSearchParams(window.location.search);
+            const classPlusUrl = urlParams.get('url');
+            if (classPlusUrl) { loadVideoWithToken(classPlusUrl).catch(err => { showError('Failed to reload video: ' + err.message); }); } else { showError('No URL to reload.'); }
+        }
+        function showChannelToast() {
+            const toast = document.getElementById('channelToast');
+            if (toast) {
+                toast.classList.add('show');
+                setTimeout(() => { hideToast(); }, 8000);
+                toast.addEventListener('click', function (e) {
+                    if (!e.target.closest('.close-btn')) { openTelegram(); hideToast(); }
+                });
+            }
+        }
+        function hideToast() {
+            const toast = document.getElementById('channelToast');
+            if (toast) { toast.classList.remove('show'); }
+        }
+        function handleKeyboard(e) {
+            if (e.target.tagName.toLowerCase() === 'input') return;
+            switch (e.key) {
+                case ' ':
+                    e.preventDefault();
+                    togglePlay();
+                    break;
+                case 'f':
+                    e.preventDefault();
+                    toggleFullscreen();
+                    break;
+                case 'ArrowLeft':
+                    e.preventDefault();
+                    seek(-10);
+                    break;
+                case 'ArrowRight':
+                    e.preventDefault();
+                    seek(10);
+                    break;
+            }
+        }
+        window.addEventListener('beforeunload', function () {
+            if (hls) { hls.destroy(); }
+            if (shakaPlayer) { shakaPlayer.destroy(); }
+        });
+        document.addEventListener('fullscreenchange', handleFullscreenChange);
+        document.addEventListener('webkitfullscreenchange', handleFullscreenChange);
+        document.addEventListener('mozfullscreenchange', handleFullscreenChange);
+        document.addEventListener('MSFullscreenChange', handleFullscreenChange);
+        function handleFullscreenChange() {
+            if (document.fullscreenElement || document.webkitFullscreenElement || document.mozFullScreenElement || document.msFullscreenElement) {
+                player.addEventListener('mousemove', showControls);
+                player.addEventListener('touchstart', showControls);
+                player.addEventListener('touchmove', showControls);
+                showControls();
+            } else {
+                player.removeEventListener('mousemove', showControls);
+                player.removeEventListener('touchstart', showControls);
+                player.removeEventListener('touchmove', showControls);
+            }
+        }
+        document.addEventListener('contextmenu', event => event.preventDefault());
+        document.addEventListener('keydown', function (e) {
+            if (e.key === 'F12') { e.preventDefault(); return false; }
+            if (e.ctrlKey && e.shiftKey && e.key === 'I') { e.preventDefault(); return false; }
+            if (e.ctrlKey && e.shiftKey && e.key === 'J') { e.preventDefault(); return false; }
+            if (e.ctrlKey && e.key === 'u') { e.preventDefault(); return false; }
+            if (e.ctrlKey && e.key === 's') { e.preventDefault(); return false; }
+        });
+        let devtools = false;
+        const threshold = 160;
+        setInterval(() => {
+            if (window.outerHeight - window.innerHeight > threshold || window.outerWidth - window.innerWidth > threshold) {
+                if (!devtools) { devtools = true; console.log("DevTools detected (basic check)."); }
+            } else { devtools = false; }
+        }, 1000);
+        // NEW: Hide Copyright Toast Function
+        function hideCopyrightToast() {
+            const toast = document.getElementById('copyrightToast');
+            if (toast) {
+                toast.style.display = 'none';
+            }
+        }
+    </script>
+</body>
+</html>
